@@ -89,7 +89,6 @@
           c[i] = c[i] + buffer[j] * buffer[j+i];
         }
       }
-let lastPitch = 0;
       let d = 0;
       while (c[d] > c[d+1]) d++;
       let maxval = -1, maxpos = -1;
@@ -104,6 +103,7 @@ let lastPitch = 0;
       let T0 = maxpos;
       return sampleRate / T0;
     }
+let lastPitch = 0;
 
     async function start() {
       try {
@@ -123,16 +123,15 @@ let lastPitch = 0;
 
         function detect() {
           analyser.getFloatTimeDomainData(buffer);
-          const pitch = autoCorrelate(buffer, audioContext.sampleRate);
-
+let pitch = autoCorrelate(buffer, audioContext.sampleRate);
           if (pitch !== -1 && pitch > 80 && pitch < 1000) {
 
   // 🔥 filtre anti-jitter
-  if (Math.abs(pitch - lastPitch) < 20) {
-    pitch = lastPitch;
-  } else {
-    lastPitch = pitch;
-  }
+if (lastPitch !== 0 && Math.abs(pitch - lastPitch) < 15) {
+  pitch = lastPitch;
+} else {
+  lastPitch = pitch;
+}
 
   document.getElementById("note").innerText = freqToNote(pitch);
   document.getElementById("feedback").innerText = getFeedback(pitch);
