@@ -63,10 +63,14 @@
 
 async function start() {
   try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    // 🔑 IMPORTANT : débloquer l'audio
+    await audioContext.resume();
+
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     document.getElementById("feedback").innerText = "🎤 Micro OK";
 
-    const audioContext = new AudioContext();
     const source = audioContext.createMediaStreamSource(stream);
     const analyser = audioContext.createAnalyser();
 
@@ -79,7 +83,7 @@ async function start() {
       analyser.getFloatTimeDomainData(input);
       const [pitch, clarity] = detector.findPitch(input, audioContext.sampleRate);
 
-      if (clarity > 0.8) { // 👈 plus tolérant
+      if (clarity > 0.8) {
         document.getElementById("note").innerText = freqToNote(pitch);
         document.getElementById("feedback").innerText = getFeedback(pitch);
         updateBar(pitch);
@@ -92,15 +96,9 @@ async function start() {
 
   } catch (err) {
     document.getElementById("feedback").innerText =
-      "❌ Micro bloqué ou refusé : " + err.message;
+      "❌ Erreur micro : " + err.message;
   }
-}        }
-
-        requestAnimationFrame(detect);
-      }
-
-      detect();
-    }
+}
   </script>
 </body>
 </html>
