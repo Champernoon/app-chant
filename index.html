@@ -61,34 +61,7 @@
       document.getElementById("cursor").style.left = pos + "px";
     }
 
-    async function start() {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const audioContext = new AudioContext();
-      const source = audioContext.createMediaStreamSource(stream);
-      const analyser = audioContext.createAnalyser();
-
-      source.connect(analyser);
-
-      const detector = Pitchy.PitchDetector.forFloat32Array(analyser.fftSize);
-      const input = new Float32Array(detector.inputLength);
-
-      function detect() {
-        analyser.getFloatTimeDomainData(input);
-        const [pitch, clarity] = detector.findPitch(input, audioContext.sampleRate);
-
-        if (clarity > 0.9) {
-          document.getElementById("note").innerText = freqToNote(pitch);
-          document.getElementById("feedback").innerText = getFeedback(pitch);
-          updateBar(pitch);
-        }
-
-        requestAnimationFrame(detect);
-      }
-
-      detect();
-    }
-  </script>
-  async function start() {
+async function start() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     document.getElementById("feedback").innerText = "🎤 Micro OK";
@@ -121,6 +94,13 @@
     document.getElementById("feedback").innerText =
       "❌ Micro bloqué ou refusé : " + err.message;
   }
-}
+}        }
+
+        requestAnimationFrame(detect);
+      }
+
+      detect();
+    }
+  </script>
 </body>
 </html>
