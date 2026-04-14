@@ -1,16 +1,66 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Test de justesse</title>
+  <title>Coach vocal</title>
+  <style>
+    body { font-family: Arial; text-align: center; }
+    #bar {
+      width: 300px;
+      height: 20px;
+      background: #ddd;
+      margin: 20px auto;
+      position: relative;
+    }
+    #cursor {
+      width: 10px;
+      height: 20px;
+      background: red;
+      position: absolute;
+      left: 145px;
+    }
+  </style>
 </head>
 <body>
-  <h1>🎤 Test de justesse</h1>
+  <h1>🎤 Coach vocal</h1>
+
+  <p>Note cible : <strong id="targetNote">La</strong></p>
   <button onclick="start()">Commencer</button>
-  <p id="result">...</p>
+
+  <h2 id="note">--</h2>
+  <p id="feedback">...</p>
+
+  <div id="bar">
+    <div id="cursor"></div>
+  </div>
 
   <script src="https://unpkg.com/pitchy/dist/pitchy.min.js"></script>
 
   <script>
+    const notes = ["Do","Do#","Ré","Ré#","Mi","Fa","Fa#","Sol","Sol#","La","La#","Si"];
+    const targetFreq = 440; // LA
+
+    function freqToNote(freq) {
+      const A4 = 440;
+      const n = Math.round(12 * Math.log2(freq / A4));
+      const index = (n + 9 + 120) % 12;
+      return notes[index];
+    }
+
+    function getFeedback(freq) {
+      const diff = freq - targetFreq;
+      if (Math.abs(diff) < 5) return "✅ Juste";
+      if (diff < 0) return "⬇️ Trop grave";
+      return "⬆️ Trop aigu";
+    }
+
+    function updateBar(freq) {
+      const diff = freq - targetFreq;
+      const maxDiff = 50;
+      const percent = Math.max(-1, Math.min(1, diff / maxDiff));
+      const pos = 150 + percent * 140;
+      document.getElementById("cursor").style.left = pos + "px";
+    }
+
     async function start() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const audioContext = new AudioContext();
@@ -27,8 +77,9 @@
         const [pitch, clarity] = detector.findPitch(input, audioContext.sampleRate);
 
         if (clarity > 0.9) {
-          document.getElementById("result").innerText =
-            "Fréquence : " + pitch.toFixed(1) + " Hz";
+          document.getElementById("note").innerText = freqToNote(pitch);
+          document.getElementById("feedback").innerText = getFeedback(pitch);
+          updateBar(pitch);
         }
 
         requestAnimationFrame(detect);
