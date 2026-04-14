@@ -60,7 +60,6 @@
 
     // 🔥 Détection de pitch simple (autocorrelation)
     function autoCorrelate(buffer, sampleRate) {
-      let lastPitch = 0;
       let SIZE = buffer.length;
       let rms = 0;
 
@@ -90,7 +89,7 @@
           c[i] = c[i] + buffer[j] * buffer[j+i];
         }
       }
-
+let lastPitch = 0;
       let d = 0;
       while (c[d] > c[d+1]) d++;
       let maxval = -1, maxpos = -1;
@@ -108,9 +107,6 @@
 
     async function start() {
       try {
-
-
-        
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         await audioContext.resume();
 
@@ -129,12 +125,7 @@
           analyser.getFloatTimeDomainData(buffer);
           const pitch = autoCorrelate(buffer, audioContext.sampleRate);
 
-          if (pitch !== -1) {
-            document.getElementById("note").innerText = freqToNote(pitch);
-            document.getElementById("feedback").innerText = getFeedback(pitch);
-            updateBar(pitch);
-
-if (pitch !== -1 && pitch > 80 && pitch < 1000) {
+          if (pitch !== -1 && pitch > 80 && pitch < 1000) {
 
   // 🔥 filtre anti-jitter
   if (Math.abs(pitch - lastPitch) < 20) {
@@ -147,8 +138,6 @@ if (pitch !== -1 && pitch > 80 && pitch < 1000) {
   document.getElementById("feedback").innerText = getFeedback(pitch);
   updateBar(pitch);
 }
-            
-          }
 
           requestAnimationFrame(detect);
         }
