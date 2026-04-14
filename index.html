@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Coach vocal</title>
+  <title>Coach vocal - jeu</title>
   <style>
     body { font-family: Arial; text-align: center; }
     #bar {
@@ -18,136 +18,149 @@
       position: absolute;
       left: 145px;
     }
+    #score {
+      font-size: 24px;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
-  <h1>🎤 Coach vocal</h1>
+  <h1>🎤 Jeu de chant</h1>
 
-  <p>Note cible : <strong>La (440 Hz)</strong></p>
+  <p>🎯 Tiens la note : <strong>La (440 Hz)</strong></p>
   <button onclick="start()">Commencer</button>
 
   <h2 id="note">--</h2>
   <p id="feedback">...</p>
 
+  <p id="stable">Stabilité : 0 s</p>
+  <p id="score">Score : 0</p>
+
   <div id="bar">
     <div id="cursor"></div>
   </div>
 
-  <script>
-    const notes = ["Do","Do#","Ré","Ré#","Mi","Fa","Fa#","Sol","Sol#","La","La#","Si"];
-    const targetFreq = 440;
+<script>
+const targetFreq = 440;
 
-    function freqToNote(freq) {
-      const A4 = 440;
-      const n = Math.round(12 * Math.log2(freq / A4));
-      return notes[(n + 9 + 120) % 12];
-    }
-
-    function getFeedback(freq) {
-      const diff = freq - targetFreq;
-      if (Math.abs(diff) < 5) return "✅ Juste";
-      if (diff < 0) return "⬇️ Trop grave";
-      return "⬆️ Trop aigu";
-    }
-
-    function updateBar(freq) {
-      const diff = freq - targetFreq;
-      const maxDiff = 50;
-      const percent = Math.max(-1, Math.min(1, diff / maxDiff));
-      const pos = 150 + percent * 140;
-      document.getElementById("cursor").style.left = pos + "px";
-    }
-
-    // 🔥 Détection de pitch simple (autocorrelation)
-    function autoCorrelate(buffer, sampleRate) {
-      let SIZE = buffer.length;
-      let rms = 0;
-
-      for (let i = 0; i < SIZE; i++) {
-        let val = buffer[i];
-        rms += val * val;
-      }
-      rms = Math.sqrt(rms / SIZE);
-      if (rms < 0.01) return -1;
-
-      let r1 = 0, r2 = SIZE - 1, threshold = 0.2;
-
-      for (let i = 0; i < SIZE/2; i++) {
-        if (Math.abs(buffer[i]) < threshold) { r1 = i; break; }
-      }
-
-      for (let i = 1; i < SIZE/2; i++) {
-        if (Math.abs(buffer[SIZE - i]) < threshold) { r2 = SIZE - i; break; }
-      }
-
-      buffer = buffer.slice(r1, r2);
-      SIZE = buffer.length;
-
-      let c = new Array(SIZE).fill(0);
-      for (let i = 0; i < SIZE; i++) {
-        for (let j = 0; j < SIZE - i; j++) {
-          c[i] = c[i] + buffer[j] * buffer[j+i];
-        }
-      }
-      let d = 0;
-      while (c[d] > c[d+1]) d++;
-      let maxval = -1, maxpos = -1;
-
-      for (let i = d; i < SIZE; i++) {
-        if (c[i] > maxval) {
-          maxval = c[i];
-          maxpos = i;
-        }
-      }
-
-      let T0 = maxpos;
-      return sampleRate / T0;
-    }
 let lastPitch = 0;
+let stableTime = 0;
+let score = 0;
 
-    async function start() {
-      try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        await audioContext.resume();
-
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        document.getElementById("feedback").innerText = "🎤 Micro OK";
-
-        const source = audioContext.createMediaStreamSource(stream);
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 2048;
-
-        source.connect(analyser);
-
-        const buffer = new Float32Array(analyser.fftSize);
-
-        function detect() {
-          analyser.getFloatTimeDomainData(buffer);
-let pitch = autoCorrelate(buffer, audioContext.sampleRate);
-          if (pitch !== -1 && pitch > 80 && pitch < 1000) {
-
-  // 🔥 filtre anti-jitter
-if (lastPitch !== 0 && Math.abs(pitch - lastPitch) < 15) {
-  pitch = lastPitch;
-} else {
-  lastPitch = pitch;
+function freqToNote(freq) {
+  const notes = ["Do","Do#","Ré","Ré#","Mi","Fa","Fa#","Sol","Sol#","La","La#","Si"];
+  const n = Math.round(12 * Math.log2(freq / 440));
+  return notes[(n + 9 + 120) % 12];
 }
 
-  document.getElementById("note").innerText = freqToNote(pitch);
-  document.getElementById("feedback").innerText = getFeedback(pitch);
-  updateBar(pitch);
+function getFeedback(freq) {
+  const diff = freq - targetFreq;
+  if (Math.abs(diff) < 5) return "✅ Juste";
+  if (diff < 0) return "⬇️ Trop grave";
+  return "⬆️ Trop aigu";
 }
 
-          requestAnimationFrame(detect);
-        }
+function updateBar(freq) {
+  const diff = freq - targetFreq;
+  const percent = Math.max(-1, Math.min(1, diff / 50));
+  const pos = 150 + percent * 140;
+  document.getElementById("cursor").style.left = pos + "px";
+}
 
-        detect();
+function autoCorrelate(buffer, sampleRate) {
+  let SIZE = buffer.length;
+  let rms = 0;
 
-      } catch (err) {
-        document.getElementById("feedback").innerText =
-          "❌ Erreur micro : " + err.message;
-      }
+  for (let i = 0; i < SIZE; i++) rms += buffer[i] * buffer[i];
+  rms = Math.sqrt(rms / SIZE);
+  if (rms < 0.02) return -1;
+
+  let r1 = 0, r2 = SIZE - 1;
+
+  for (let i = 0; i < SIZE/2; i++) {
+    if (Math.abs(buffer[i]) < 0.2) { r1 = i; break; }
+  }
+  for (let i = 1; i < SIZE/2; i++) {
+    if (Math.abs(buffer[SIZE - i]) < 0.2) { r2 = SIZE - i; break; }
+  }
+
+  buffer = buffer.slice(r1, r2);
+  SIZE = buffer.length;
+
+  let c = new Array(SIZE).fill(0);
+  for (let i = 0; i < SIZE; i++) {
+    for (let j = 0; j < SIZE - i; j++) {
+      c[i] += buffer[j] * buffer[j+i];
     }
-  </script>
+  }
+
+  let d = 0;
+  while (c[d] > c[d+1]) d++;
+
+  let maxval = -1, maxpos = -1;
+  for (let i = d; i < SIZE; i++) {
+    if (c[i] > maxval) {
+      maxval = c[i];
+      maxpos = i;
+    }
+  }
+
+  if (!maxpos) return -1;
+  return sampleRate / maxpos;
+}
+
+async function start() {
+  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  await audioContext.resume();
+
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  document.getElementById("feedback").innerText = "🎤 Micro OK";
+
+  const source = audioContext.createMediaStreamSource(stream);
+  const analyser = audioContext.createAnalyser();
+  analyser.fftSize = 2048;
+
+  source.connect(analyser);
+
+  const buffer = new Float32Array(analyser.fftSize);
+
+  function detect() {
+    analyser.getFloatTimeDomainData(buffer);
+    let pitch = autoCorrelate(buffer, audioContext.sampleRate);
+
+    if (pitch !== -1 && pitch > 80 && pitch < 1000) {
+
+      // 🔥 stabilité
+      if (lastPitch !== 0 && Math.abs(pitch - lastPitch) < 12) {
+        pitch = lastPitch;
+        stableTime += 0.1;
+      } else {
+        lastPitch = pitch;
+        stableTime = 0;
+      }
+
+      // 🎯 score si stable
+      if (stableTime > 1) {
+        score += 1;
+      }
+
+      document.getElementById("note").innerText = freqToNote(pitch);
+      document.getElementById("feedback").innerText = getFeedback(pitch);
+
+      document.getElementById("stable").innerText =
+        "Stabilité : " + stableTime.toFixed(1) + " s";
+
+      document.getElementById("score").innerText =
+        "Score : " + score;
+
+      updateBar(pitch);
+    }
+
+    requestAnimationFrame(detect);
+  }
+
+  detect();
+}
+</script>
 </body>
 </html>
