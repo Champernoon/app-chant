@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test de justesse</title>
+</head>
+<body>
+  <h1>🎤 Test de justesse</h1>
+  <button onclick="start()">Commencer</button>
+  <p id="result">...</p>
+
+  <script src="https://unpkg.com/pitchy/dist/pitchy.min.js"></script>
+
+  <script>
+    async function start() {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+
+      source.connect(analyser);
+
+      const detector = Pitchy.PitchDetector.forFloat32Array(analyser.fftSize);
+      const input = new Float32Array(detector.inputLength);
+
+      function detect() {
+        analyser.getFloatTimeDomainData(input);
+        const [pitch, clarity] = detector.findPitch(input, audioContext.sampleRate);
+
+        if (clarity > 0.9) {
+          document.getElementById("result").innerText =
+            "Fréquence : " + pitch.toFixed(1) + " Hz";
+        }
+
+        requestAnimationFrame(detect);
+      }
+
+      detect();
+    }
+  </script>
+</body>
+</html>
